@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:13  # Use an appropriate version
+    container_name: northwind_db
+    environment:
+      POSTGRES_USER: northwind_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: northwind_db
+    volumes:
+      - ./data:/var/lib/postgresql/data  # Persists database data
+      - ./northwind_schema.sql:/docker-entrypoint-initdb.d/northwind_schema.sql  # Initialize with your schema
+    ports:
+      - "5432:5432"  # Expose PostgreSQL on port 5432
+
+  metabase:
+    image: metabase/metabase
+    container_name: metabase
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: northwind_db
+      MB_DB_PORT: 5432
+      MB_DB_USER: northwind_user
+      MB_DB_PASS: password
+      MB_DB_HOST: db  # Link Metabase to the PostgreSQL container
+    ports:
+      - "3000:3000"  # Expose Metabase on port 3000
+    depends_on:
+      - db
