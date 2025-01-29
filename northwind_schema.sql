@@ -1,5 +1,5 @@
--- Drop existing tables with CASCADE to remove dependent objects
 DROP TABLE IF EXISTS public.order_details CASCADE;
+DROP TABLE IF EXISTS public.products CASCADE;
 DROP TABLE IF EXISTS public.orders CASCADE;
 DROP TABLE IF EXISTS public.shippers CASCADE;
 DROP TABLE IF EXISTS public.customers CASCADE;
@@ -8,8 +8,10 @@ DROP TABLE IF EXISTS public.territories CASCADE;
 DROP TABLE IF EXISTS public.regions CASCADE;
 DROP TABLE IF EXISTS public.categories CASCADE;
 DROP TABLE IF EXISTS public.suppliers CASCADE;
+DROP TABLE IF EXISTS public.suppliers CASCADE;
 DROP TABLE IF EXISTS public.databasechangeloglock CASCADE;
 DROP TABLE IF EXISTS public.databasechangelog CASCADE;
+DROP TABLE IF EXISTS public.employee_territories CASCADE;
 
 
 
@@ -36,6 +38,22 @@ CREATE TABLE employees (
 );
 COMMENT ON TABLE employees IS 'Table containing employee information';
 COMMENT ON COLUMN employees.employeeID IS 'Unique identifier for each employee';
+
+
+
+-- Products table: Stores product information
+CREATE TABLE products (
+    productID INTEGER, 
+    productName VARCHAR(255) NOT NULL,  -- Name of the product
+    supplierID INTEGER,  -- Supplier of the product (foreign key)
+    categoryID INTEGER,  -- Category of the product (foreign key)
+    quantityPerUnit VARCHAR(255),  -- Quantity of product per unit
+    unitPrice FLOAT,  -- Price of the product per unit
+    unitsInStock INTEGER,  -- Available units in stock
+    unitsOnOrder INTEGER,  -- Units on order
+    reorderLevel INTEGER,  -- Reorder level for inventory
+    discontinued BOOLEAN NOT NULL DEFAULT FALSE
+);
 
 
 
@@ -73,7 +91,7 @@ COMMENT ON COLUMN territories.regionID IS 'ID of the region to which the territo
 -- Employee-Territories table: Junction table to associate employees with territories
 CREATE TABLE employee_territories (
     employeeID INTEGER NOT NULL,  -- Employee ID (foreign key)
-    territoryID INTEGER NOT NULL,  -- Territory ID (foreign key)
+    territoryID INTEGER NOT NULL  -- Territory ID (foreign key)
 );
 
 
@@ -126,21 +144,6 @@ CREATE TABLE shippers (
 COMMENT ON TABLE shippers IS 'Table containing information about shipping companies';
 
 
--- Products table: Stores product information
-CREATE TABLE products (
-    productID INTEGER, 
-    productName VARCHAR(255) NOT NULL,  -- Name of the product
-    supplierID INTEGER,  -- Supplier of the product (foreign key)
-    categoryID INTEGER,  -- Category of the product (foreign key)
-    quantityPerUnit VARCHAR(255),  -- Quantity of product per unit
-    unitPrice FLOAT,  -- Price of the product per unit
-    unitsInStock INTEGER,  -- Available units in stock
-    unitsOnOrder INTEGER,  -- Units on order
-    reorderLevel INTEGER,  -- Reorder level for inventory
-    discontinued BOOLEAN NOT NULL DEFAULT FALSE,  -- Indicates if the product is discontinued
-    FOREIGN KEY (supplierID) REFERENCES suppliers(supplierID),  -- Enforcing foreign key relationship
-    FOREIGN KEY (categoryID) REFERENCES categories(categoryID)  -- Enforcing foreign key relationship
-);
 COMMENT ON TABLE products IS 'Table containing product information';
 
 
@@ -161,24 +164,26 @@ CREATE TABLE orders (
     shipRegion VARCHAR(255),  -- Shipping region
     shipPostalCode VARCHAR(255),  -- Shipping postal code
     shipCountry VARCHAR(255),  -- Shipping country
-    FOREIGN KEY (employeeID) REFERENCES employees(employeeID),  -- Enforcing foreign key relationship
+    FOREIGN KEY (employeeID) REFERENCES employees(employeeID),  
     FOREIGN KEY (customerID) REFERENCES customers(customerID),  -- Enforcing foreign key relationship
     FOREIGN KEY (shipVia) REFERENCES shippers(shipperID)  -- Enforcing foreign key relationship
 );
 COMMENT ON TABLE orders IS 'Table containing order information';
 
--- OrderDetails table: Stores details for each order
+
 CREATE TABLE order_details (
-    orderID INT NOT NULL,  -- ID of the order (foreign key)
-    productID INTEGER NOT NULL,  -- Product being ordered (foreign key)
-    unitPrice FLOAT,  -- Unit price of the product
-    quantity INTEGER,  -- Quantity of the product ordered
-    discount FLOAT,  -- Discount applied to the order (if any)
-    PRIMARY KEY (orderID, productID),  -- Composite primary key to ensure unique order-product pairs
-    FOREIGN KEY (orderID) REFERENCES orders(orderID),  -- Enforcing foreign key relationship
-    FOREIGN KEY (productID) REFERENCES products(productID)  -- Enforcing foreign key relationship
+    orderID INT NOT NULL,
+    productID INT NOT NULL,
+    unitPrice FLOAT NOT NULL,
+    quantity INT NOT NULL,
+    discount FLOAT DEFAULT 0
 );
+
+
+
 COMMENT ON TABLE order_details IS 'Table containing details about each order';
+
+
 
 
 
