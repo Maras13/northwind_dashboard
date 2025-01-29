@@ -2,7 +2,7 @@ version: '3'
 
 services:
   db:
-    image: postgres:13  # Use an appropriate version
+    image: postgres:13  
     container_name: northwind_db
     environment:
       POSTGRES_USER: northwind_user
@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: northwind_db
     volumes:
       - ./data:/var/lib/postgresql/data  # Persists database data
-      - ./northwind_schema.sql:/docker-entrypoint-initdb.d/northwind_schema.sql  # Initialize with your schema
+      - ./northwind_schema.sql:/docker-entrypoint-initdb.d/northwind_db.sql  # Initialize with your schema
     ports:
       - "5432:5432"  # Expose PostgreSQL on port 5432
 
