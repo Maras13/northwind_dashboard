@@ -1,7 +1,17 @@
-DROP TABLE IF EXISTS public.databasechangeloglock;
-DROP TABLE IF EXISTS public.databasechangelog;
+-- Drop existing tables with CASCADE to remove dependent objects
+DROP TABLE IF EXISTS public.order_details CASCADE;
+DROP TABLE IF EXISTS public.orders CASCADE;
+DROP TABLE IF EXISTS public.shippers CASCADE;
+DROP TABLE IF EXISTS public.customers CASCADE;
+DROP TABLE IF EXISTS public.employees CASCADE;
+DROP TABLE IF EXISTS public.territories CASCADE;
+DROP TABLE IF EXISTS public.regions CASCADE;
+DROP TABLE IF EXISTS public.categories CASCADE;
+DROP TABLE IF EXISTS public.suppliers CASCADE;
+DROP TABLE IF EXISTS public.databasechangeloglock CASCADE;
+DROP TABLE IF EXISTS public.databasechangelog CASCADE;
 
--- Create tables with improved structure, data integrity, and consistency
+
 
 -- Employees table: Stores information about each employee
 CREATE TABLE employees (
@@ -22,14 +32,13 @@ CREATE TABLE employees (
     photo TEXT,  -- Employee's photo (stored as text, could be URL or binary)
     notes TEXT,  -- Additional notes about the employee
     reportsTo INT,  -- ID of the employee's manager (references another employee)
-    photoPath TEXT,  -- Path to the employee's photo (if applicable)
-    UNIQUE (employeeID)  -- Ensure employeeID is unique across the table
+    photoPath TEXT  -- Path to the employee's photo (if applicable)
 );
 COMMENT ON TABLE employees IS 'Table containing employee information';
 COMMENT ON COLUMN employees.employeeID IS 'Unique identifier for each employee';
 
--- Indexing for employeeID (commonly queried for joins)
-CREATE INDEX idx_employeeID ON employees(employeeID);
+
+
 
 -- Regions table: Stores information about regions
 CREATE TABLE regions (
@@ -48,8 +57,6 @@ CREATE TABLE categories (
 );
 COMMENT ON TABLE categories IS 'Table containing product category information';
 
--- Indexing for categoryID (commonly queried for product lookups)
-CREATE INDEX idx_categoryID ON categories(categoryID);
 
 -- Territories table: Stores information about sales territories
 CREATE TABLE territories (
@@ -61,21 +68,18 @@ CREATE TABLE territories (
 COMMENT ON TABLE territories IS 'Table containing information about sales territories';
 COMMENT ON COLUMN territories.regionID IS 'ID of the region to which the territory belongs';
 
--- Indexing for regionID in territories (for fast lookup)
-CREATE INDEX idx_regionID ON territories(regionID);
+
 
 -- Employee-Territories table: Junction table to associate employees with territories
 CREATE TABLE employee_territories (
     employeeID INTEGER NOT NULL,  -- Employee ID (foreign key)
     territoryID INTEGER NOT NULL,  -- Territory ID (foreign key)
-    FOREIGN KEY (employeeID) REFERENCES employees(employeeID),  -- Enforcing foreign key relationship
-    FOREIGN KEY (territoryID) REFERENCES territories(territoryID),  -- Enforcing foreign key relationship
-    PRIMARY KEY (employeeID, territoryID)  -- Composite primary key to ensure unique associations
 );
+
+
 COMMENT ON TABLE employee_territories IS 'Junction table to associate employees with territories';
 
--- Indexing for employeeID and territoryID in employee_territories (for faster joins)
-CREATE INDEX idx_employeeID_territoryID ON employee_territories(employeeID, territoryID);
+
 
 -- Customers table: Stores customer information
 CREATE TABLE customers (
@@ -93,8 +97,7 @@ CREATE TABLE customers (
 );
 COMMENT ON TABLE customers IS 'Table containing customer information';
 
--- Indexing for customerID (commonly queried in orders)
-CREATE INDEX idx_customerID ON customers(customerID);
+
 
 -- Suppliers table: Stores supplier information
 CREATE TABLE suppliers (
@@ -113,8 +116,6 @@ CREATE TABLE suppliers (
 );
 COMMENT ON TABLE suppliers IS 'Table containing supplier information';
 
--- Indexing for supplierID (commonly queried in products)
-CREATE INDEX idx_supplierID ON suppliers(supplierID);
 
 -- Shippers table: Stores information about shippers
 CREATE TABLE shippers (
@@ -124,12 +125,10 @@ CREATE TABLE shippers (
 );
 COMMENT ON TABLE shippers IS 'Table containing information about shipping companies';
 
--- Indexing for shipperID (commonly queried in orders)
-CREATE INDEX idx_shipperID ON shippers(shipperID);
 
 -- Products table: Stores product information
 CREATE TABLE products (
-    productID INTEGER PRIMARY KEY,  -- Unique ID for each product
+    productID INTEGER, 
     productName VARCHAR(255) NOT NULL,  -- Name of the product
     supplierID INTEGER,  -- Supplier of the product (foreign key)
     categoryID INTEGER,  -- Category of the product (foreign key)
@@ -144,10 +143,7 @@ CREATE TABLE products (
 );
 COMMENT ON TABLE products IS 'Table containing product information';
 
--- Indexing for productID, supplierID, and categoryID (for faster lookups)
-CREATE INDEX idx_productID ON products(productID);
-CREATE INDEX idx_supplierID_products ON products(supplierID);
-CREATE INDEX idx_categoryID_products ON products(categoryID);
+
 
 -- Orders table: Stores order information
 CREATE TABLE orders (
@@ -171,16 +167,46 @@ CREATE TABLE orders (
 );
 COMMENT ON TABLE orders IS 'Table containing order information';
 
--- Indexing for orderID, employeeID, and customerID (frequent query fields)
-CREATE INDEX idx_orderID ON orders(orderID);
-CREATE INDEX idx_employeeID_orders ON orders(employeeID);
-CREATE INDEX idx_customerID_orders ON orders(customerID);
-
--- Order Details table: Stores details about each product in an order
+-- OrderDetails table: Stores details for each order
 CREATE TABLE order_details (
-    orderID INTEGER NOT NULL,  -- Order ID (foreign key)
-    productID INTEGER NOT NULL,  -- Product ID (foreign key)
-    unitPrice FLOAT NOT NULL,  -- Price per unit of the product
-    quantity INTEGER NOT NULL,  -- Quantity of the product ordered
-    discount FLOAT NOT NULL,  -- Discount applied to the product
-    PRIMARY KEY (order
+    orderID INT NOT NULL,  -- ID of the order (foreign key)
+    productID INTEGER NOT NULL,  -- Product being ordered (foreign key)
+    unitPrice FLOAT,  -- Unit price of the product
+    quantity INTEGER,  -- Quantity of the product ordered
+    discount FLOAT,  -- Discount applied to the order (if any)
+    PRIMARY KEY (orderID, productID),  -- Composite primary key to ensure unique order-product pairs
+    FOREIGN KEY (orderID) REFERENCES orders(orderID),  -- Enforcing foreign key relationship
+    FOREIGN KEY (productID) REFERENCES products(productID)  -- Enforcing foreign key relationship
+);
+COMMENT ON TABLE order_details IS 'Table containing details about each order';
+
+
+
+-- Indexing
+CREATE INDEX IF NOT EXISTS idx_employeeID ON employees(employeeID);
+CREATE INDEX IF NOT EXISTS idx_regionID ON territories(regionID);
+CREATE INDEX IF NOT EXISTS idx_supplierID ON products(supplierID);
+CREATE INDEX IF NOT EXISTS idx_categoryID ON products(categoryID);
+CREATE INDEX IF NOT EXISTS idx_productID ON products(productID);
+CREATE INDEX IF NOT EXISTS idx_shipperID ON shippers(shipperID);
+CREATE INDEX IF NOT EXISTS idx_customerID ON customers(customerID);
+CREATE INDEX IF NOT EXISTS idx_orderID ON orders(orderID);
+
+
+
+
+-- Copy data into tables
+
+COPY employees FROM '/docker-entrypoint-initdb.d/employees.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+COPY regions FROM '/docker-entrypoint-initdb.d/regions.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+COPY categories FROM '/docker-entrypoint-initdb.d/categories.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+COPY suppliers FROM '/docker-entrypoint-initdb.d/suppliers.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+COPY shippers FROM '/docker-entrypoint-initdb.d/shippers.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+COPY customers FROM '/docker-entrypoint-initdb.d/customers.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+COPY territories FROM '/docker-entrypoint-initdb.d/territories.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+COPY employee_territories FROM '/docker-entrypoint-initdb.d/employee_territories.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';  -- Skip duplicates
+
+COPY products FROM '/docker-entrypoint-initdb.d/products.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';  
+COPY orders FROM '/docker-entrypoint-initdb.d/orders.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+COPY order_details FROM '/docker-entrypoint-initdb.d/order_details.csv' WITH DELIMITER ',' CSV HEADER NULL AS 'NULL';
+
