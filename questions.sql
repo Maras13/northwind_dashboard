@@ -1,4 +1,3 @@
---Throughout the week write SQL queries to answer the questions below
 
 
 
@@ -13,6 +12,15 @@ FROM products;
 
 SELECT * FROM customers
 WHERE country = 'Germany';
+
+
+--Average days to ship
+
+SELECT 
+    AVG(CAST(shipped_date - order_date AS INTEGER)) AS AvgDaysToShip
+FROM orders
+WHERE shipped_date IS NOT NULL;
+
 
 
 --Get a list of current products (Product ID and name).
@@ -346,3 +354,41 @@ $$ LANGUAGE plpgsql;
 
 SELECT lifetime_value_by_customer('FISSA');
 
+
+-- Orders per category and year
+SELECT 
+    c.category_name,
+    EXTRACT(YEAR FROM o.order_date) AS order_year,
+    COUNT(DISTINCT od.order_id) AS OrderCount
+FROM orders o
+JOIN order_details od ON o.order_id = od.order_id
+JOIN products p ON od.product_id = p.product_id
+JOIN categories c ON p.category_id = c.category_id
+GROUP BY c.category_name, order_year
+ORDER BY order_year, order_count DESC;
+
+
+-- Top 5 earners(revenue per employee)
+SEECT e.first_name, e.last_name, e.title, 
+DATE_PART('year',AGE(e.hire_date, e.birth_date)) AS hiring_age,
+c.company_name,
+SUM(od.unit_price*od.quantity) as revenue_per_employee,
+o.order_id 
+FROM orders o 
+JOIN employees e ON o.employee_id=e.employee_id 
+JOIN order_details od ON od.order_id=o.order_id 
+JOIN customers c on o.customer_id=c.customer_id
+group by emp.first_name, emp.last_name, e.title, hiring_age, c.company_name,o.orderid
+ORDER BY revenue_per_employee DESC
+Limit 5;
+
+--- revenue per country
+
+select c.category_name,
+o.ship_country,
+SUM(od.unit_price*od.quantity) as revenue
+from categories c
+join  products p on p.category_id = c.category_id
+join order_details od on od.product_id=p.product_id
+join orders o on o.order_id=od.order_id
+group by c.category_name,o.ship_country;
